@@ -88,15 +88,43 @@ class Jasa_unit extends Pembayaran_Controller
 
                 //GetRekening Detail
                 $sqlRekDetail = "SELECT
-                    rkd.deskripsi as namaData,
-                    SUM(rkd.alat) as alat,
-                    SUM(rkd.sarana) as sarana,
-                    SUM(rkd.pelayanan) as pelayanan,
-                    SUM(rkd.medis) as medis,
-                    SUM(rkd.anastesi) as anastesi,
-                    SUM(rkd.asisten) as asisten,
-                    SUM(rkd.akomodasi) as akomodasi
-                FROM " . $this->dbKeuangan . ".tb_grup_rek_detail rkd
+                                     (
+                                         CASE 
+                                            WHEN jns ='AKO' AND  jnsKunjungan = 'RG' THEN 'AKOMODASI RANAP GABUNG'
+                                            WHEN jns='BL' AND jnsKunjungan = 'RG' THEN 'BILLING LANGSUNG RANAP GABUNG' 
+                                            WHEN jns='Lab' AND jnsKunjungan = 'RG' THEN 'LABORATORIUM RANAP GABUNG'
+                                            WHEN jns='Rad' AND jnsKunjungan = 'RG' THEN 'RADIOLOGI RANAP GABUNG'
+                                            WHEN jns='O' AND jnsKunjungan = 'RG' THEN 'OPERASI RANAP GABUNG'
+                                            WHEN jns='K' AND jnsKunjungan = 'RG' THEN 'KONSUL RANAP GABUNG'
+                                            WHEN jns='RI' AND jnsKunjungan = 'RG' THEN 'TINDAKAN RANAP GABUNG'
+                                            WHEN jns='KAR' THEN deskripsi  
+                                            WHEN jns ='AKO' AND jnsKunjungan = 'RI' THEN deskripsi
+                                            WHEN jns='Lab' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Laboratorium Rajal'
+                                            WHEN jns='Lab' AND jnsKunjungan = 'RI' THEN 'Pendapatan Laboratorium Ranap'
+                                            WHEN jns='Rad' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Radiologi Rajal'
+                                            WHEN jns='Rad' AND jnsKunjungan = 'RI' THEN 'Pendapatan Radiologi Ranap'
+                                            WHEN jns='O' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Operasi Rajal'
+                                            WHEN jns='O' AND jnsKunjungan = 'RI' THEN 'Pendapatan Operasi Ranap'
+                                            WHEN jns='BL' AND jnsKunjungan = 'RJ' THEN 'Pendapatan Billing Langsung Rajal'
+                                            WHEN jns='BL' AND jnsKunjungan = 'RI' THEN 'Pendapatan Billing Langsung Ranap'
+                                            WHEN jns='K' THEN 
+                                                (SELECT nm_poli FROM db_simrs_baru.poliklinik WHERE kd_poli = grupunit)
+                                            WHEN jns = 'RJ' THEN
+                                                (SELECT nm_poli FROM db_simrs_baru.poliklinik WHERE kd_poli = grupunit)
+                                            ELSE 
+                                                (SELECT nm_bangsal from db_simrs_baru.bangsal WHERE kd_bangsal = grupunit)
+                                        END
+                    ) as namaData,
+                    rkd.jml,
+                    SUM(rkd.alat * rkd.jml) as alat,
+                    SUM(rkd.sarana * rkd.jml) as sarana,
+                    SUM(rkd.pelayanan * rkd.jml) as pelayanan,
+                    SUM(rkd.medis * rkd.jml) as medis,
+                    SUM(rkd.anastesi * rkd.jml) as anastesi,
+                    SUM(rkd.asisten * rkd.jml) as asisten,
+                    SUM(rkd.akomodasi * rkd.jml) as akomodasi
+                FROM " . $this->dbKeuangan . ".tb_rek_detail rkd
+                LEFT JOIN db_simrs_rm.rm_reg_rajal_detail rm on rm.no_rawat = rkd.no_rawat 
                 WHERE rkd.idkategori='" . $vRek->idkategori . "' 
                 AND (rkd.createdate >='" . $_POST["tglawal"] . "' and rkd.createdate <='" . $_POST["tglakhir"] . "')
-                GROUP BY rkd.deskripsi ORDER BY rkd.deskripsi ASC";
+                GROUP BY namaData ORDER BY namaData ASC";
