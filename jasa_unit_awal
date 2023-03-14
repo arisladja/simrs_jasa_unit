@@ -1,0 +1,102 @@
+<?php
+defined('BASEPATH') or exit('No direct script access allowed');
+require('./application/third_party/phpoffice/vendor/autoload.php');
+
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+class Jasa_unit extends Pembayaran_Controller
+{
+    protected $dbKeuangan = 'db_simrs_keuangan';
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    public function igd()
+    {
+        $this->data["vUrl"] = "getDataIGD";
+        $this->template->admin_render('laporan/jasa_unit/v_jasa_unit', $this->data);
+    }
+
+    public function poli()
+    {
+        $this->data["vUrl"] = "getDataPoli";
+        $this->template->admin_render('laporan/jasa_unit/v_jasa_unit', $this->data);
+    }
+    public function ranap()
+    {
+        $this->data["vUrl"] = "getDataRanap";
+        $this->template->admin_render('laporan/jasa_unit/v_jasa_unit', $this->data);
+    }
+
+    public function getDataPendapatan()
+    {
+        if ($_POST["tglawal"] == $_POST["tglakhir"]) {
+            $periode = date("d-m-Y", strtotime($_POST["tglawal"]));
+        } else {
+            $periode = date("d-m-Y", strtotime($_POST["tglawal"])) . " S/D " . date("d-m-Y", strtotime($_POST["tglakhir"]));
+        }
+        $arrPendapatan = array();
+        $htmlData = '
+            <thead>
+                    <tr>
+                        <th colspan="11" class="text-center">
+                            <h4>DATA PENDAPATAN PASIEN UMUM</h4>
+                        </th>
+
+                    </tr>
+                </thead>
+                <tbody>
+
+               
+        ';
+
+        $sqlGrupRek = "
+            SELECT * from " . $this->dbKeuangan . ".tb_grup_rek ORDER BY idrek ASC; 
+        ";
+        $qGrupRek = $this->db->query($sqlGrupRek)->result();
+        foreach ($qGrupRek as $key => $vGrupRek) {
+            $htmlData .= '
+                <tr class="table-info font-weight-bold">
+                    
+                    <td colspan = "10">' . $vGrupRek->idrek . ' - ' . $vGrupRek->deskripsi . '</td>
+                </tr>
+            ';
+            $sqlRek = "SELECT  
+                rk.idkategori,
+                rk.deksripsi
+            FROM " . $this->dbKeuangan . ".tb_rek_kategori rk
+            WHERE rk.idrek='" . $vGrupRek->idrek . "' ORDER BY rk.idkategori ASC";
+
+            //Get Data Kategori
+            $qRek = $this->db->query($sqlRek)->result();
+            foreach ($qRek as $key => $vRek) {
+                $arrKategori = array(
+                    "kode" => $vRek->idkategori,
+                    "deksripsi" => $vRek->deksripsi,
+                    "total" => 0,
+                    "detail" => array()
+                );
+                //     $htmlData .= '
+                //     <tr class="font-weight-bold">
+
+                //         <td style="widht:1%" class="text-center"></td>
+                //         <td colspan="3">'.$vRek->idkategori.' - '.$vRek->deksripsi.'</td>
+                //     </tr>
+                // ';
+
+                //GetRekening Detail
+                $sqlRekDetail = "SELECT
+                    rkd.deskripsi as namaData,
+                    SUM(rkd.alat) as alat,
+                    SUM(rkd.sarana) as sarana,
+                    SUM(rkd.pelayanan) as pelayanan,
+                    SUM(rkd.medis) as medis,
+                    SUM(rkd.anastesi) as anastesi,
+                    SUM(rkd.asisten) as asisten,
+                    SUM(rkd.akomodasi) as akomodasi
+                FROM " . $this->dbKeuangan . ".tb_grup_rek_detail rkd
+                WHERE rkd.idkategori='" . $vRek->idkategori . "' 
+                AND (rkd.createdate >='" . $_POST["tglawal"] . "' and rkd.createdate <='" . $_POST["tglakhir"] . "')
+                GROUP BY rkd.deskripsi ORDER BY rkd.deskripsi ASC";
